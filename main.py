@@ -29,10 +29,12 @@ class AddressBook(UserDict):
 
 class Field:
     def __init__(self, value):
+        self._value = None
         self.value = value
 
-    def __str__(self):
-        return str(self.value)
+    @property
+    def value(self):
+        return self._value
 
     def validate(self):
         pass
@@ -41,6 +43,10 @@ class Field:
         self.value = value
         self.validate()
 
+    @value.setter
+    def value(self, value):
+        self._value = value
+
 
 class Name(Field):
     def __init__(self, name):
@@ -48,17 +54,23 @@ class Name(Field):
 
 
 class Phone(Field):
-    def validate(self):
-        if not (len(self.value) == 10 and self.value.isdigit()):
-            raise ValueError("Invalid phone number format")
+    @Field.value.setter
+    def validate(self, value):
+        if len(value) < 10 or len(value) > 12:
+            raise ValueError("Phone must contains 10 symbols.")
+        if not value.isnumeric():
+            raise ValueError('Wrong phones.')
+        self._value = value
 
 
 class Birthday(Field):
-    def validate(self):
-        try:
-            datetime.strptime(self.value, '%d-%m-%Y')
-        except ValueError:
-            raise ValueError("Invalid birthday format (DD-MM-YYYY)")
+    @Field.value.setter
+    def validate(self, value):
+        today = datetime.now().date()
+        birth_date = datetime.strptime(value, '%d-%m-%Y').date()
+        if birth_date > today:
+            raise ValueError("Birthday must be less than current year and date.")
+        self._value = value
 
     def as_datetime(self):
         return datetime.strptime(self.value, '%d-%m-%Y')

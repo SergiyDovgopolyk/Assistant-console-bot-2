@@ -1,5 +1,6 @@
 from collections import UserDict
 from datetime import datetime
+from decorator import input_error
 
 
 class AddressBook(UserDict):
@@ -29,6 +30,7 @@ class AddressBook(UserDict):
 
 class Field:
     def __init__(self, value):
+        self.value = None
         self.value = value
 
     def __str__(self):
@@ -43,12 +45,11 @@ class Field:
 
 
 class Name(Field):
-    def __init__(self, name):
-        super().__init__(name)
+    pass
 
 
 class Phone(Field):
-    def validate(self):
+    def validate(self, value):
         if not (len(self.value) == 10 and self.value.isdigit()):
             raise ValueError("Invalid phone number format")
 
@@ -107,73 +108,88 @@ class Record:
         return f"Name: {self.name.value}, Phones: {[phone.value for phone in self.phones]}, Birthday: {self.birthday.value if self.birthday else 'Not specified'}"
 
 
+address_book = AddressBook()
+
+
+@input_error
+def add_func(command):
+    _, name, phone, *birthday = command.split(' ')
+    birthday = birthday[0] if birthday else None
+    record = Record(name, birthday)
+    record.add_phone(phone)
+    address_book.add_record(record)
+    return f"Record for {name} added to the address book."
+
+
+@input_error
+def del_func(command):
+    _, name = command.split(' ')
+    address_book.delete(name)
+    return f"Record for {name} deleted from the address book."
+
+
+@input_error
+def find_func(command):
+    _, name = command.split(' ')
+    record = address_book.find(name)
+    if record:
+        return f"Found record: {record}"
+    else:
+        return f"No record found for {name}."
+
+
+@input_error
+def edit_func(command):
+    _, name, new_phone = command.split(' ')
+    record = address_book.find(name)
+    if record:
+        record.phones = [Phone(new_phone)]
+        return f"Phone number for {name} edited to {new_phone}."
+    else:
+        return f"No record found for {name}."
+
+
+@input_error
+def show_func(command):
+    return address_book
+
+
+@input_error
+def birthday_func(command):
+    _, name = command.split(' ')
+    record = address_book.find(name)
+    if record:
+        days_left = record.days_to_birthday()
+        if days_left is not None:
+            return f"Days left to {name}'s birthday: {days_left} days"
+        else:
+            return f"{name} has no birthday specified."
+    else:
+        return f"No record found for {name}."
+
+
+COMMANDS = {
+    'add': add_func,
+    'delete': del_func,
+    'find': find_func,
+    'edit': edit_func,
+    'show': show_func,
+    'birthday': birthday_func
+}
+
+
 def main():
-    address_book = AddressBook()
-
-    def add_func(args):
-        _, name, phone, *birthday = args
-        birthday = birthday[0] if birthday else None
-        record = Record(name, birthday)
-        record.add_phone(phone)
-        address_book.add_record(record)
-        print(f"Record for {name} added to the address book.")
-
-    def del_func(args):
-        _, name = args
-        address_book.delete(name)
-        print(f"Record for {name} deleted from the address book.")
-
-    def find_func(args):
-        _, name = args
-        record = address_book.find(name)
-        if record:
-            print(f"Found record: {record}")
-        else:
-            print(f"No record found for {name}.")
-
-    def edit_func(args):
-        _, name, new_phone = args
-        record = address_book.find(name)
-        if record:
-            record.phones = [Phone(new_phone)]
-            print(f"Phone number for {name} edited to {new_phone}.")
-        else:
-            print(f"No record found for {name}.")
-
-    def show_func(args):
-        print(address_book)
-
-    def birthday_func(args):
-        _, name = command.split(' ', 1)
-        record = address_book.find(name)
-        if record:
-            days_left = record.days_to_birthday()
-            if days_left is not None:
-                print(f"Days left to {name}'s birthday: {days_left} days")
-            else:
-                print(f"{name} has no birthday specified.")
-        else:
-            print(f"No record found for {name}.")
-
-    COMMANDS = {
-        'add ': add_func,
-        'delete ': del_func,
-        'find ': find_func,
-        'edit ': edit_func,
-        'show all': show_func,
-        'birthday ': birthday_func
-    }
-
     while True:
         command = input("Enter a command: ").strip().lower()
-        parts = command.split(' ')
 
         if command in ["good bye", "close", "exit"]:
             print("Good bye!")
             break
-        elif parts[0] in COMMANDS:
-            func = COMMANDS[parts[0]]
-            func(parts[1:])
+        elif command.split(' ')[0] in COMMANDS:
+            func = COMMANDS[command.split(' ')[0]]
+            result = func(command)
+            if result:
+                print(result)
         else:
             print("Invalid command. Type 'help' for a list of commands.")
 
